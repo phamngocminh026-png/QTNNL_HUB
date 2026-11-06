@@ -1,0 +1,19 @@
+{
+  "name": "hrm-study-web",
+  "version": "1.0.0",
+  "description": "Web học bản chất và ôn tập trắc nghiệm Quản trị Nguồn nhân lực (HUB - PGS.TS Trần Kim Dung)",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "hrm",
+    "human-resource-management",
+    "quan-tri-nguon-nhan-luc",
+    "hub",
+    "quiz",
+    "education"
+  ],
+  "author": "",
+  "license": "MIT"
+}

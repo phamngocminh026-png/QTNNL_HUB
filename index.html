@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Học Bản Chất & Ôn Tập Quản Trị Nguồn Nhân Lực</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-icon">HR</div>
+          <div>
+            <h1 class="brand-title">Quản Trị Nhân Lực</h1>
+            <p class="brand-subtitle">Chuẩn Giáo trình HUB • PGS.TS Trần Kim Dung</p>
+          </div>
+        </div>
+        <button class="mobile-close-btn" id="closeSidebarBtn" aria-label="Đóng menu">✕</button>
+      </div>
+
+      <!-- Search trigger -->
+      <div class="sidebar-search">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="globalSearchInput" placeholder="Tìm khái niệm, câu hỏi..." autocomplete="off" />
+          <button id="clearSearchBtn" class="clear-search-btn hidden" title="Xóa tìm kiếm">✕</button>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">Bắt đầu</div>
+          <button class="nav-item active" data-view="overview" id="navOverview">
+            <span class="nav-icon">🧭</span>
+            <span class="nav-label">Bản chất & Tổng quan môn học</span>
+          </button>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Lộ trình 8 Chương (Lý thuyết → Bài tập)</div>
+          <div id="chapterNavList" class="chapter-nav-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Ôn tập & Kiểm tra</div>
+          <button class="nav-item" data-view="mistakes" id="navMistakes">
+            <span class="nav-icon">⚠️</span>
+            <span class="nav-label">Các câu từng làm sai</span>
+            <span class="nav-badge badge-danger" id="mistakesCountBadge">0</span>
+          </button>
+          <button class="nav-item" data-view="bookmarks" id="navBookmarks">
+            <span class="nav-icon">★</span>
+            <span class="nav-label">Câu đã đánh dấu</span>
+            <span class="nav-badge" id="bookmarksCountBadge">0</span>
+          </button>
+          <button class="nav-item" data-view="exam" id="navExam">
+            <span class="nav-icon">📝</span>
+            <span class="nav-label">Thi thử Cuối kỳ</span>
+          </button>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="overall-progress-box">
+          <div class="progress-header-row">
+            <span>Tiến độ toàn môn</span>
+            <strong id="sidebarProgressText">0 / 491 câu</strong>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="sidebarProgressBar" style="width: 0%"></div>
+          </div>
+        </div>
+        <button class="reset-progress-btn" id="resetAllBtn" title="Xóa lịch sử làm bài để học lại từ đầu">
+          Đặt lại tiến độ học
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <!-- Mobile Header -->
+      <header class="mobile-header">
+        <button class="menu-toggle-btn" id="openSidebarBtn">☰ Menu chương học</button>
+        <span class="mobile-header-title" id="mobileHeaderTitle">Quản Trị Nguồn Nhân Lực</span>
+      </header>
+
+      <main class="main-content" id="mainContent">
+        <!-- Populated dynamically by app.js -->
+      </main>
+    </div>
+  </div>
+
+  <!-- Theory Quick Reference Modal (when clicking "Xem lại lý thuyết chủ đề này" during quiz) -->
+  <div class="modal-backdrop hidden" id="theoryModalBackdrop">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="theoryModalTitle">
+      <div class="modal-header">
+        <div>
+          <span class="modal-tag" id="theoryModalChapter">Chương 1</span>
+          <h3 class="modal-title" id="theoryModalTitle">Lý thuyết chủ đề</h3>
+        </div>
+        <button class="modal-close-btn" id="closeTheoryModalBtn" aria-label="Đóng">✕</button>
+      </div>
+      <div class="modal-body" id="theoryModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="closeTheoryModalFooterBtn">Đã hiểu • Quay lại làm tiếp câu hỏi</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
