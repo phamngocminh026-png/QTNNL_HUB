@@ -1724,6 +1724,59 @@
       }
     });
 
+    // Export / Backup progress
+    const exportBtn = document.getElementById('exportProgressBtn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        const jsonStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(userState, null, 2));
+        const dlAnchor = document.createElement('a');
+        dlAnchor.setAttribute("href", jsonStr);
+        const dateStr = new Date().toISOString().slice(0, 10);
+        dlAnchor.setAttribute("download", `tien_do_hoc_qtnnl_hub_${dateStr}.json`);
+        document.body.appendChild(dlAnchor);
+        dlAnchor.click();
+        dlAnchor.remove();
+      });
+    }
+
+    // Import / Restore progress
+    const importBtn = document.getElementById('importProgressBtn');
+    const importInput = document.getElementById('importFileInput');
+    if (importBtn && importInput) {
+      importBtn.addEventListener('click', () => {
+        importInput.click();
+      });
+      importInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const data = JSON.parse(evt.target.result);
+            if (data && typeof data === 'object' && (data.answers || data.everWrong || data.bookmarks)) {
+              userState = {
+                answers: data.answers || {},
+                mistakes: data.mistakes || {},
+                everWrong: data.everWrong || {},
+                bookmarks: data.bookmarks || {},
+                readTopics: data.readTopics || {},
+                examHistory: data.examHistory || []
+              };
+              saveState();
+              renderMain();
+              alert(`🎉 Khôi phục thành công! Đã nạp lại ${Object.keys(userState.answers).length} câu đã làm.`);
+            } else {
+              alert('File không hợp lệ hoặc không đúng định dạng sao lưu.');
+            }
+          } catch (err) {
+            alert('Lỗi khi đọc file sao lưu: ' + err.message);
+          }
+          importInput.value = '';
+        };
+        reader.readAsText(file);
+      });
+    }
+
     // Mobile sidebar toggle
     document.getElementById('openSidebarBtn').addEventListener('click', () => {
       sidebar.classList.add('open');
