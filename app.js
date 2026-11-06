@@ -27,6 +27,31 @@
     });
   });
 
+  // Pre-packaged state snapshot for quick sync
+  const AUTHOR_SYNC_STATE = {
+    "answers": {
+      "c1_q1": "B", "c1_q2": "D", "c1_q3": "D", "c1_q4": "B", "c1_q5": "C",
+      "c1_q6": "B", "c1_q59": "D", "c1_q7": "D", "c1_q8": "A", "c1_q9": "B",
+      "c1_q11": "A", "c1_q12": "C", "c1_q13": "C", "c1_q14": "A", "c1_q15": "B",
+      "c1_q16": "C", "c1_q17": "C", "c1_q18": "D", "c1_q19": "B", "c1_q20": "C",
+      "c1_q21": "D", "c1_q22": "A", "c1_q23": "C", "c1_q24": "A", "c1_q25": "C",
+      "c1_q26": "A", "c1_q27": "D", "c1_q28": "B", "c1_q29": "B", "c1_q30": "A",
+      "c1_q31": "B", "c1_q32": "B", "c1_q33": "C", "c1_q34": "D", "c1_q49": "C",
+      "c1_q50": "D", "c1_q10": "C", "c1_q35": "C", "c1_q36": "B", "c1_q37": "C",
+      "c1_q38": "D", "c1_q39": "D", "c1_q40": "D", "c1_q41": "D", "c1_q42": "D"
+    },
+    "mistakes": {},
+    "everWrong": {},
+    "bookmarks": {},
+    "readTopics": {
+      "c1_t1": true,
+      "c1_t2": true,
+      "c1_t3": true,
+      "c1_t4": true
+    },
+    "examHistory": []
+  };
+
   // Persistent user state
   function loadState() {
     try {
@@ -56,6 +81,24 @@
   }
 
   let userState = loadState();
+
+  // Auto-sync if accessed with ?sync=me or ?dongbo=1
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('sync') === 'me' || urlParams.get('dongbo') === '1') {
+      userState = JSON.parse(JSON.stringify(AUTHOR_SYNC_STATE));
+      saveState();
+      if (window.history && window.history.replaceState) {
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+      }
+      setTimeout(() => {
+        alert('🎉 Đã đồng bộ thành công tiến độ 45 câu Chương 1 vào máy của bạn!');
+      }, 300);
+    }
+  } catch (e) {
+    console.warn('URL sync param check failed:', e);
+  }
 
   function saveState() {
     try {
@@ -1744,7 +1787,15 @@
     const importInput = document.getElementById('importFileInput');
     if (importBtn && importInput) {
       importBtn.addEventListener('click', () => {
-        importInput.click();
+        const choice = confirm('Bạn muốn đồng bộ nhanh tiến độ 45 câu Chương 1 đã học?\n\n• Bấm OK: Nạp nhanh 45 câu Chương 1 & Đã đọc lý thuyết\n• Bấm Cancel: Chọn file .json sao lưu từ máy');
+        if (choice) {
+          userState = JSON.parse(JSON.stringify(AUTHOR_SYNC_STATE));
+          saveState();
+          renderMain();
+          alert('🎉 Đã đồng bộ thành công 45/491 câu Chương 1 vào trình duyệt web!');
+        } else {
+          importInput.click();
+        }
       });
       importInput.addEventListener('change', (e) => {
         const file = e.target.files && e.target.files[0];
