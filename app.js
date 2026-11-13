@@ -206,19 +206,7 @@
     arrowRight: '<svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
   };
 
-  // Update Sidebar & Progress
-  function updateSidebarStats() {
-    const answeredCount = Object.keys(userState.answers).length;
-    const everWrongList = Object.keys(userState.everWrong || {}).filter((k) => userState.everWrong[k] && userState.everWrong[k].wrongCount > 0);
-    const bookmarkCount = Object.keys(userState.bookmarks || {}).filter((k) => userState.bookmarks[k]).length;
-
-    mistakesCountBadge.textContent = everWrongList.length;
-    bookmarksCountBadge.textContent = bookmarkCount;
-    sidebarProgressText.textContent = `${answeredCount} / ${totalQuestionsCount} câu`;
-    const pct = totalQuestionsCount > 0 ? Math.round((answeredCount / totalQuestionsCount) * 100) : 0;
-    sidebarProgressBar.style.width = `${pct}%`;
-
-    // Render chapter nav items
+  function renderChapterNavList() {
     chapterNavList.innerHTML = chapters.map((ch) => {
       const chQuestions = ch.questions || [];
       const chAnswered = chQuestions.filter((q) => userState.answers[q.id]).length;
@@ -237,7 +225,7 @@
             <span class="theory-status-dot ${allRead ? 'read' : ''}">
               ${allRead ? '✓ Đã đọc LT' : `📖 LT: ${readCount}/${chTopics.length}`}
             </span>
-            <span>${chAnswered}/${chQuestions.length} câu</span>
+            <span class="chapter-count-text">${chAnswered}/${chQuestions.length} câu</span>
           </div>
           <div class="mini-progress-bg">
             <div class="mini-progress-fill" style="width: ${chPct}%"></div>
@@ -245,6 +233,51 @@
         </button>
       `;
     }).join('');
+  }
+
+  // Update Sidebar & Progress (High-performance incremental updates)
+  function updateSidebarStats() {
+    const answeredCount = Object.keys(userState.answers).length;
+    const everWrongList = Object.keys(userState.everWrong || {}).filter((k) => userState.everWrong[k] && userState.everWrong[k].wrongCount > 0);
+    const bookmarkCount = Object.keys(userState.bookmarks || {}).filter((k) => userState.bookmarks[k]).length;
+
+    mistakesCountBadge.textContent = everWrongList.length;
+    bookmarksCountBadge.textContent = bookmarkCount;
+    sidebarProgressText.textContent = `${answeredCount} / ${totalQuestionsCount} câu`;
+    const pct = totalQuestionsCount > 0 ? Math.round((answeredCount / totalQuestionsCount) * 100) : 0;
+    sidebarProgressBar.style.width = `${pct}%`;
+
+    // Only rebuild chapter nav DOM if not yet populated
+    if (!chapterNavList.children.length) {
+      renderChapterNavList();
+    } else {
+      // Lightning-fast targeted DOM updates (zero reflow, 0ms)
+      chapters.forEach((ch) => {
+        const item = chapterNavList.querySelector(`[data-chapter="${ch.chapter}"]`);
+        if (!item) return;
+        const chQuestions = ch.questions || [];
+        const chAnswered = chQuestions.filter((q) => userState.answers[q.id]).length;
+        const chPct = chQuestions.length > 0 ? Math.round((chAnswered / chQuestions.length) * 100) : 0;
+        const chTopics = ch.topics || [];
+        const readCount = chTopics.filter((t) => userState.readTopics[t.id]).length;
+        const allRead = chTopics.length > 0 && readCount === chTopics.length;
+
+        const countEl = item.querySelector('.chapter-count-text');
+        if (countEl) countEl.textContent = `${chAnswered}/${chQuestions.length} câu`;
+
+        const fillEl = item.querySelector('.mini-progress-fill');
+        if (fillEl) fillEl.style.width = `${chPct}%`;
+
+        const dotEl = item.querySelector('.theory-status-dot');
+        if (dotEl) {
+          dotEl.className = `theory-status-dot ${allRead ? 'read' : ''}`;
+          dotEl.textContent = allRead ? '✓ Đã đọc LT' : `📖 LT: ${readCount}/${chTopics.length}`;
+        }
+
+        const isActive = uiState.view === 'chapter' && uiState.activeChapter === ch.chapter;
+        item.classList.toggle('active', isActive);
+      });
+    }
 
     // Highlight top-level nav buttons
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((btn) => {
@@ -682,6 +715,82 @@
     return list;
   }
 
+  // Helper to build chapter review banner HTML
+  function buildChapterReviewBannerHtml(ch) {
+    if (!ch) return '';
+    const chQuestions = ch.questions || [];
+    const chAnswered = chQuestions.filter((q) => userState.answers[q.id]);
+    const chEverWrong = chQuestions.filter((q) => userState.everWrong && userState.everWrong[q.id] && userState.everWrong[q.id].wrongCount > 0);
+
+    if (chEverWrong.length > 0) {
+      return `
+        <div class="chapter-review-banner">
+          <div class="chapter-review-info">
+            <div class="chapter-review-title">
+              <span>⚠️ Tổng kết Chương ${ch.chapter}: Có ${chEverWrong.length} câu bạn từng làm sai</span>
+            </div>
+            <div class="chapter-review-desc">
+              Trong quá trình làm trắc nghiệm Chương ${ch.chapter}, bạn đã từng chọn nhầm <strong>${chEverWrong.length}</strong> câu hỏi. Dù bạn đã chọn lại đáp án đúng, hệ thống vẫn lưu lại để giúp bạn tự kiểm tra lại phản xạ trước khi sang chương mới!
+            </div>
+          </div>
+          <div class="chapter-review-actions">
+            <button class="btn btn-sm" id="filterEverWrongBtn">
+              🔍 Lọc xem ${chEverWrong.length} câu từng sai
+            </button>
+            <button class="btn btn-sm" id="resetEverWrongForRetestBtn" style="background:#d97706; color:#fff; border-color:#b45309; font-weight:700;">
+              ↺ Xóa đáp án để tự thi lại ${chEverWrong.length} câu này
+            </button>
+          </div>
+        </div>
+      `;
+    } else if (chAnswered.length === chQuestions.length && chQuestions.length > 0) {
+      return `
+        <div class="chapter-review-banner all-clean">
+          <div class="chapter-review-info">
+            <div class="chapter-review-title">
+              🎉 Xuất sắc! Bạn đã làm đúng toàn bộ ${chQuestions.length} câu Chương ${ch.chapter} mà không bị sai câu nào!
+            </div>
+            <div class="chapter-review-desc">
+              Kiến thức Chương ${ch.chapter} đã được củng cố rất vững chắc. Bạn có thể tự tin chuyển sang chương tiếp theo hoặc làm đề thi thử tổng hợp!
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    return '';
+  }
+
+  function updateChapterReviewBanner(ch) {
+    if (!ch) return;
+    const wrapper = mainContent.querySelector('.chapter-review-wrapper');
+    if (wrapper) {
+      wrapper.innerHTML = buildChapterReviewBannerHtml(ch);
+    }
+  }
+
+  function updateToolbarFilterCounts(ch) {
+    if (!ch) return;
+    const chQuestions = ch.questions || [];
+    const chUnanswered = chQuestions.filter((q) => !userState.answers[q.id]);
+    const chEverWrong = chQuestions.filter((q) => userState.everWrong && userState.everWrong[q.id] && userState.everWrong[q.id].wrongCount > 0);
+    const chBookmarked = chQuestions.filter((q) => userState.bookmarks && userState.bookmarks[q.id]);
+
+    const allBtn = mainContent.querySelector('[data-filter="all"]');
+    if (allBtn) allBtn.textContent = `Tất cả (${chQuestions.length})`;
+
+    const unansBtn = mainContent.querySelector('[data-filter="unanswered"]');
+    if (unansBtn) unansBtn.textContent = `Chưa làm (${chUnanswered.length})`;
+
+    const ewBtn = mainContent.querySelector('[data-filter="everWrong"]');
+    if (ewBtn) {
+      ewBtn.textContent = `⚠️ Từng làm sai (${chEverWrong.length})`;
+      ewBtn.style = chEverWrong.length > 0 ? 'font-weight:700; color:#b45309;' : '';
+    }
+
+    const bmBtn = mainContent.querySelector('[data-filter="bookmarked"]');
+    if (bmBtn) bmBtn.textContent = `★ Đã lưu (${chBookmarked.length})`;
+  }
+
   function renderChapterPracticeTab(ch) {
     const topics = ch.topics || [];
     const chQuestions = ch.questions || [];
@@ -774,37 +883,7 @@
 
     const reviewBannerHtml = `
       <div class="chapter-review-wrapper">
-        ${chEverWrong.length > 0 ? `
-          <div class="chapter-review-banner">
-            <div class="chapter-review-info">
-              <div class="chapter-review-title">
-                <span>⚠️ Tổng kết Chương ${ch.chapter}: Có ${chEverWrong.length} câu bạn từng làm sai</span>
-              </div>
-              <div class="chapter-review-desc">
-                Trong quá trình làm trắc nghiệm Chương ${ch.chapter}, bạn đã từng chọn nhầm <strong>${chEverWrong.length}</strong> câu hỏi. Dù bạn đã chọn lại đáp án đúng, hệ thống vẫn lưu lại để giúp bạn tự kiểm tra lại phản xạ trước khi sang chương mới!
-              </div>
-            </div>
-            <div class="chapter-review-actions">
-              <button class="btn btn-sm" id="filterEverWrongBtn">
-                🔍 Lọc xem ${chEverWrong.length} câu từng sai
-              </button>
-              <button class="btn btn-sm" id="resetEverWrongForRetestBtn" style="background:#d97706; color:#fff; border-color:#b45309; font-weight:700;">
-                ↺ Xóa đáp án để tự thi lại ${chEverWrong.length} câu này
-              </button>
-            </div>
-          </div>
-        ` : (chAnswered.length === chQuestions.length && chQuestions.length > 0 ? `
-          <div class="chapter-review-banner all-clean">
-            <div class="chapter-review-info">
-              <div class="chapter-review-title">
-                🎉 Xuất sắc! Bạn đã làm đúng toàn bộ ${chQuestions.length} câu Chương ${ch.chapter} mà không bị sai câu nào!
-              </div>
-              <div class="chapter-review-desc">
-                Kiến thức Chương ${ch.chapter} đã được củng cố rất vững chắc. Bạn có thể tự tin chuyển sang chương tiếp theo hoặc làm đề thi thử tổng hợp!
-              </div>
-            </div>
-          </div>
-        ` : '')}
+        ${buildChapterReviewBannerHtml(ch)}
       </div>
     `;
 
@@ -1079,80 +1158,146 @@
       });
     });
 
-    bindQuestionCardDelegation(mainContent, () => renderChapterView(ch));
   }
 
-  // Shared Question Card Interactions (Selecting option, Bookmark, Retry, Open Theory Modal)
-  function bindQuestionCardDelegation(container, onReRender) {
-    container.querySelectorAll('[data-select-opt]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const qId = btn.getAttribute('data-qid');
-        const letter = btn.getAttribute('data-select-opt');
-        const q = questionMap[qId];
-        if (!q) return;
+  // Instant In-Place Card Replacement (Zero re-render, Zero lag)
+  function replaceQuestionCardInPlace(qId) {
+    const q = questionMap[qId];
+    if (!q) return;
+    const cardEl = document.getElementById(`qcard-${qId}`);
+    if (!cardEl) return;
 
-        recordUserAnswer(qId, letter);
+    let indexLabel = `Câu ${q.number}`;
+    if (uiState.view === 'collection' || uiState.view === 'search') {
+      indexLabel = `Chương ${q.chapter} • Câu ${q.number}`;
+    }
 
-        // Update just this card in place if in list mode to avoid scroll jump
-        const cardEl = document.getElementById(`qcard-${qId}`);
-        if (cardEl && uiState.practiceMode === 'list' && uiState.view === 'chapter') {
-          const tmp = document.createElement('div');
-          tmp.innerHTML = renderQuestionCardHtml(q, { indexLabel: `Câu ${q.number}` });
-          const newCard = tmp.firstElementChild;
-          cardEl.replaceWith(newCard);
-          bindQuestionCardDelegation(newCard.parentElement, onReRender);
-          updateSidebarStats();
-        } else {
-          onReRender();
-        }
-      });
+    const tmp = document.createElement('div');
+    tmp.innerHTML = renderQuestionCardHtml(q, {
+      indexLabel: indexLabel,
+      showSingleNav: (uiState.view === 'chapter' && uiState.practiceMode === 'single')
     });
+    const newCard = tmp.firstElementChild;
+    if (newCard) {
+      cardEl.replaceWith(newCard);
+    }
+  }
 
-    container.querySelectorAll('[data-retry-question]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const qId = btn.getAttribute('data-retry-question');
-        delete userState.answers[qId];
-        delete userState.mistakes[qId];
-        saveState();
-        onReRender();
-      });
-    });
+  // Handlers for Question Card Actions
+  function handleSelectOption(qId, letter) {
+    const q = questionMap[qId];
+    if (!q) return;
 
-    container.querySelectorAll('[data-clear-ever-wrong]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const qId = btn.getAttribute('data-clear-ever-wrong');
-        if (userState.everWrong && userState.everWrong[qId]) {
-          delete userState.everWrong[qId];
-          saveState();
-          onReRender();
-        }
-      });
-    });
+    recordUserAnswer(qId, letter);
 
-    container.querySelectorAll('[data-bookmark-question]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const qId = btn.getAttribute('data-bookmark-question');
-        if (userState.bookmarks[qId]) {
-          delete userState.bookmarks[qId];
-        } else {
-          userState.bookmarks[qId] = true;
-        }
-        saveState();
-        onReRender();
-      });
-    });
+    if (uiState.view === 'chapter') {
+      const ch = chapterMap[uiState.activeChapter];
+      if (uiState.practiceMode === 'list') {
+        replaceQuestionCardInPlace(qId);
+        updateChapterReviewBanner(ch);
+        updateToolbarFilterCounts(ch);
+      } else if (uiState.practiceMode === 'single') {
+        renderChapterView(ch);
+      }
+    } else if (uiState.view === 'collection' || uiState.view === 'search') {
+      replaceQuestionCardInPlace(qId);
+    }
 
-    container.querySelectorAll('[data-open-topic-modal]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const tid = btn.getAttribute('data-open-topic-modal');
-        openTheoryModal(tid);
+    updateSidebarStats();
+  }
+
+  function handleRetryQuestion(qId) {
+    delete userState.answers[qId];
+    delete userState.mistakes[qId];
+    saveState();
+
+    if (uiState.view === 'chapter') {
+      const ch = chapterMap[uiState.activeChapter];
+      if (uiState.practiceMode === 'list') {
+        replaceQuestionCardInPlace(qId);
+        updateChapterReviewBanner(ch);
+        updateToolbarFilterCounts(ch);
+      } else if (uiState.practiceMode === 'single') {
+        renderChapterView(ch);
+      }
+    } else if (uiState.view === 'collection') {
+      renderCollectionView(uiState.collectionType || 'mistakes');
+    } else if (uiState.view === 'search') {
+      replaceQuestionCardInPlace(qId);
+    }
+
+    updateSidebarStats();
+  }
+
+  function handleClearEverWrong(qId) {
+    if (userState.everWrong && userState.everWrong[qId]) {
+      delete userState.everWrong[qId];
+      saveState();
+    }
+
+    if (uiState.view === 'chapter') {
+      const ch = chapterMap[uiState.activeChapter];
+      if (uiState.practiceMode === 'list') {
+        replaceQuestionCardInPlace(qId);
+        updateChapterReviewBanner(ch);
+        updateToolbarFilterCounts(ch);
+      } else if (uiState.practiceMode === 'single') {
+        renderChapterView(ch);
+      }
+    } else if (uiState.view === 'collection') {
+      renderCollectionView(uiState.collectionType || 'mistakes');
+    } else if (uiState.view === 'search') {
+      replaceQuestionCardInPlace(qId);
+    }
+
+    updateSidebarStats();
+  }
+
+  function handleBookmarkQuestion(qId, btn) {
+    if (userState.bookmarks[qId]) {
+      delete userState.bookmarks[qId];
+    } else {
+      userState.bookmarks[qId] = true;
+    }
+    saveState();
+
+    const isBookmarked = !!userState.bookmarks[qId];
+    if (btn) {
+      btn.classList.toggle('bookmarked', isBookmarked);
+      btn.textContent = isBookmarked ? '★ Đã lưu' : '☆ Lưu câu';
+    }
+
+    if (uiState.view === 'chapter') {
+      const ch = chapterMap[uiState.activeChapter];
+      updateToolbarFilterCounts(ch);
+    } else if (uiState.view === 'collection' && uiState.collectionType === 'bookmarks') {
+      renderCollectionView('bookmarks');
+    }
+
+    updateSidebarStats();
+  }
+
+  function handleExamOptionSelect(qId, opt, btn) {
+    uiState.examAnswers[qId] = opt;
+    const parent = btn.closest('.options-list');
+    if (parent) {
+      parent.querySelectorAll('.option-btn').forEach((b) => {
+        b.classList.toggle('selected-exam', b.getAttribute('data-exam-opt') === opt);
       });
-    });
+    }
+    const counter = document.getElementById('examAnsweredCounter');
+    if (counter && uiState.examQuestions) {
+      counter.textContent = `${Object.keys(uiState.examAnswers).length}/${uiState.examQuestions.length}`;
+    }
+    const palBtn = document.querySelector(`.exam-palette-item[data-jump-exam="${qId}"]`);
+    if (palBtn) {
+      palBtn.classList.add('answered');
+    }
   }
 
   // 3. MISTAKES & BOOKMARKS COLLECTION VIEW
   function renderCollectionView(type) {
+    uiState.collectionType = type;
     const isMistakes = type === 'mistakes';
     let qIds = [];
 
@@ -1281,11 +1426,6 @@
           renderCollectionView(type);
         }
       });
-    }
-
-    const container = document.getElementById('collectionQuestionsContainer');
-    if (container) {
-      bindQuestionCardDelegation(container, () => renderCollectionView(type));
     }
   }
 
@@ -1592,22 +1732,6 @@
     `;
 
     if (!isSubmitted) {
-      mainContent.querySelectorAll('[data-exam-opt]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const qId = btn.getAttribute('data-exam-qid');
-          const opt = btn.getAttribute('data-exam-opt');
-          uiState.examAnswers[qId] = opt;
-          const parent = btn.closest('.options-list');
-          parent.querySelectorAll('.option-btn').forEach((b) => {
-            b.classList.toggle('selected-exam', b.getAttribute('data-exam-opt') === opt);
-          });
-          const counter = document.getElementById('examAnsweredCounter');
-          if (counter) {
-            counter.textContent = `${Object.keys(uiState.examAnswers).length}/${qs.length}`;
-          }
-        });
-      });
-
       document.getElementById('submitExamBtn').addEventListener('click', () => {
         const remaining = qs.length - Object.keys(uiState.examAnswers).length;
         if (remaining > 0) {
@@ -1703,8 +1827,6 @@
         ` : ''}
       </div>
     `;
-
-    bindQuestionCardDelegation(mainContent, () => renderSearchView());
   }
 
   // Global Event Listeners
@@ -1779,6 +1901,99 @@
         practiceFilter: 'all',
         resetShuffle: true
       });
+    });
+
+    // True Event Delegation on mainContent (Single permanent listener, zero listener leak, 0ms lag)
+    mainContent.addEventListener('click', (e) => {
+      // 1. Option selection
+      const optBtn = e.target.closest('[data-select-opt]');
+      if (optBtn) {
+        const qId = optBtn.getAttribute('data-qid');
+        const letter = optBtn.getAttribute('data-select-opt');
+        handleSelectOption(qId, letter);
+        return;
+      }
+
+      // 2. Retry question
+      const retryBtn = e.target.closest('[data-retry-question]');
+      if (retryBtn) {
+        const qId = retryBtn.getAttribute('data-retry-question');
+        handleRetryQuestion(qId);
+        return;
+      }
+
+      // 3. Clear ever-wrong badge
+      const clearEwBtn = e.target.closest('[data-clear-ever-wrong]');
+      if (clearEwBtn) {
+        e.stopPropagation();
+        const qId = clearEwBtn.getAttribute('data-clear-ever-wrong');
+        handleClearEverWrong(qId);
+        return;
+      }
+
+      // 4. Bookmark question
+      const bmBtn = e.target.closest('[data-bookmark-question]');
+      if (bmBtn) {
+        const qId = bmBtn.getAttribute('data-bookmark-question');
+        handleBookmarkQuestion(qId, bmBtn);
+        return;
+      }
+
+      // 5. Open theory topic modal
+      const topicModalBtn = e.target.closest('[data-open-topic-modal]');
+      if (topicModalBtn) {
+        const tid = topicModalBtn.getAttribute('data-open-topic-modal');
+        if (tid) openTheoryModal(tid);
+        return;
+      }
+
+      // 6. Exam option selection
+      const examOptBtn = e.target.closest('[data-exam-opt]');
+      if (examOptBtn && !uiState.examSubmitted) {
+        const qId = examOptBtn.getAttribute('data-exam-qid');
+        const opt = examOptBtn.getAttribute('data-exam-opt');
+        handleExamOptionSelect(qId, opt, examOptBtn);
+        return;
+      }
+
+      // 7. Review banner: filter ever-wrong
+      if (e.target.closest('#filterEverWrongBtn')) {
+        uiState.practiceFilter = 'everWrong';
+        uiState.singleIndex = 0;
+        const ch = chapterMap[uiState.activeChapter];
+        if (ch) renderChapterView(ch);
+        const topEl = document.querySelector('.practice-toolbar');
+        if (topEl) topEl.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+
+      // 8. Review banner: reset ever-wrong for retest
+      if (e.target.closest('#resetEverWrongForRetestBtn')) {
+        const ch = chapterMap[uiState.activeChapter];
+        if (!ch) return;
+        const chQuestions = ch.questions || [];
+        const chEverWrong = chQuestions.filter((q) => userState.everWrong && userState.everWrong[q.id] && userState.everWrong[q.id].wrongCount > 0);
+        if (chEverWrong.length === 0) return;
+        if (confirm(`Bạn muốn xóa đáp án của ${chEverWrong.length} câu từng làm sai trong Chương ${ch.chapter} để tự kiểm tra lại phản xạ không?`)) {
+          chEverWrong.forEach((q) => {
+            delete userState.answers[q.id];
+            delete userState.mistakes[q.id];
+          });
+          saveState();
+          uiState.practiceFilter = 'everWrong';
+          uiState.singleIndex = 0;
+          renderChapterView(ch);
+          const topEl = document.querySelector('.practice-toolbar');
+          if (topEl) topEl.scrollIntoView({ behavior: 'smooth' });
+        }
+        return;
+      }
+
+      // 9. Back to overview button
+      if (e.target.closest('#backToOverviewBtn')) {
+        navigateTo('overview');
+        return;
+      }
     });
 
     // Search input
