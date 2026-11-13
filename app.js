@@ -1709,6 +1709,56 @@
 
   // Global Event Listeners
   function initEvents() {
+    // Dark / Light Theme Toggle
+    function getTheme() {
+      return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    }
+
+    function updateThemeUi(theme) {
+      const isDark = (theme === 'dark');
+      const icon = isDark ? '☀️' : '🌙';
+      const tooltip = isDark ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối';
+      const tb = document.getElementById('themeToggleBtn');
+      if (tb) {
+        tb.textContent = icon;
+        tb.setAttribute('title', tooltip);
+        tb.setAttribute('aria-label', tooltip);
+      }
+      const mtb = document.getElementById('mobileThemeToggleBtn');
+      if (mtb) {
+        mtb.textContent = icon;
+        mtb.setAttribute('title', tooltip);
+        mtb.setAttribute('aria-label', tooltip);
+      }
+    }
+
+    function setTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        try { localStorage.setItem('hrm_theme', 'dark'); } catch (e) {}
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        try { localStorage.setItem('hrm_theme', 'light'); } catch (e) {}
+      }
+      updateThemeUi(theme);
+    }
+
+    const onToggleTheme = () => {
+      const nextTheme = getTheme() === 'dark' ? 'light' : 'dark';
+      setTheme(nextTheme);
+    };
+
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', onToggleTheme);
+    }
+    const mobileThemeToggleBtn = document.getElementById('mobileThemeToggleBtn');
+    if (mobileThemeToggleBtn) {
+      mobileThemeToggleBtn.addEventListener('click', onToggleTheme);
+    }
+
+    updateThemeUi(getTheme());
+
     // Top-level nav buttons
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((btn) => {
       btn.addEventListener('click', () => {

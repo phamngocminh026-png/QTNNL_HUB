@@ -8,6 +8,19 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('hrm_theme');
+        if (!t) {
+          t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+        }
+        if (t === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body>
   <div class="app-layout">
@@ -21,7 +34,10 @@
             <p class="brand-subtitle">Chuẩn Giáo trình HUB • PGS.TS Trần Kim Dung</p>
           </div>
         </div>
-        <button class="mobile-close-btn" id="closeSidebarBtn" aria-label="Đóng menu">✕</button>
+        <div class="sidebar-header-actions">
+          <button class="theme-toggle-btn" id="themeToggleBtn" title="Chuyển chế độ sáng / tối" aria-label="Đổi giao diện sáng tối">🌙</button>
+          <button class="mobile-close-btn" id="closeSidebarBtn" aria-label="Đóng menu">✕</button>
+        </div>
       </div>
 
       <!-- Search trigger -->
@@ -95,6 +111,7 @@
       <header class="mobile-header">
         <button class="menu-toggle-btn" id="openSidebarBtn">☰ Menu chương học</button>
         <span class="mobile-header-title" id="mobileHeaderTitle">Quản Trị Nguồn Nhân Lực</span>
+        <button class="theme-toggle-btn" id="mobileThemeToggleBtn" title="Chuyển chế độ sáng / tối" aria-label="Đổi giao diện sáng tối">🌙</button>
       </header>
 
       <main class="main-content" id="mainContent">
